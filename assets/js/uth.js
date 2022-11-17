@@ -80,6 +80,22 @@ class Game {
     return card[0];
   }
 
+  useAndTest(cardsToUse, testName) {
+    const cards = [];
+    cardsToUse.forEach((cardName) => {
+      const find = this.allCards.find((card) => {
+        return card.name === cardName;
+      })
+      if (find) {
+        cards.push(find);
+      }
+    })
+    console.log(testName, "into1", cards)
+    if (testName === "testFull") {
+      console.log("return value", Game.testFull(cards));
+    }
+  }
+
   reboot(numberOfPlayers) {
     var cardsNotSelected = [...this.allCards];
     this.board = new Board(cardsNotSelected, numberOfPlayers);
@@ -252,7 +268,7 @@ class Game {
       return group.length === 3;
     })
     if (filter && filter.length > 0) {
-      return ["Brelan de " + Card.convertIndex(filter[0][0].index), filter[0]]
+      return ["Brelan de " + Card.convertIndex(filter[0][0].index), filter]
     } else {
       return false;
     }
@@ -273,8 +289,19 @@ class Game {
   static testFull(cardsToTest) {
     const brelan = Game.testThreeOfAKind(cardsToTest);
     const pairs = Game.testPair(cardsToTest);
-    if (brelan && pairs) {
-      return ["Full de " + Card.convertIndex(brelan[1][0].index) + " à " +  Card.convertIndex(pairs[0][0].index), [brelan[1], pairs[0]]]
+    if (brelan && pairs || (brelan && brelan[1].length >= 2)) {
+      if (brelan[1].length === 1) {
+        return ["Full de " + Card.convertIndex(brelan[1][0][0].index) + " à " +  Card.convertIndex(pairs[0][0].index), [brelan[1][0], pairs[0]]]
+      } else {
+        var secondPart;
+        if (!pairs) {
+          secondPart = brelan[1][1];
+        } else {
+          secondPart = brelan[1][1][0].index > pairs[0][0].index ? brelan[1][1]: pairs[0];
+        }
+        console.log(brelan, pairs)
+        return ["Full de " + Card.convertIndex(brelan[1][0][0].index) + " à " +  Card.convertIndex(secondPart[0].index), [brelan[1][0], secondPart]]
+      }
     } else {
       return 0;
     }
@@ -392,6 +419,8 @@ var revealButton = document.getElementById("reveal-button");
 var value = document.getElementById("reveal-text");
 
 game = new Game(revealButton, value);
+//game.useAndTest(["Valet de pique", "3 de coeur", "Valet de trefle", "8 de trefle", "3 de pique", "3 de trefle", "Valet de coeur"], "testFull")
+
 game.reboot();
 
 revealButton.addEventListener("click", (event) => {
