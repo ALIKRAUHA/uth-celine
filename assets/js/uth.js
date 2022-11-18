@@ -406,7 +406,7 @@ class Game {
 }
 
 
-window.addEventListener("resize", (event) => {
+/* window.addEventListener("resize", (event) => {
   console.log('resize', event)
   if (window.innerWidth > 1200 || window.innerHeight <= window.innerWidth) {
     document.getElementById("change-to-landscape").close();
@@ -414,7 +414,7 @@ window.addEventListener("resize", (event) => {
 })
 if (window.innerWidth < 1200 && window.innerHeight > window.innerWidth) {
   document.getElementById("change-to-landscape").showModal();
-}
+} */
 
 var revealButton = document.getElementById("reveal-button");
 var value = document.getElementById("reveal-text");
