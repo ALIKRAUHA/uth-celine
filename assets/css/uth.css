@@ -12,39 +12,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 15vh;
   width: 100%;
 }
 
 #bank {
-  position: absolute;
-  left: 0%;
-  top: 80vh;
+  padding-top: 10vh;
   width: 100%;
-}
+} 
 
 #middle-container {
-  position: absolute;
-  left: 0%;
-  top: 45vh;
+  padding-top: 10vh;
   justify-content: space-between !important;
 }
 
-#bank {
-}
+@media screen and (min-width: 900px) {}
 
 .card {
-  height: 15vh;
-  width: 5%;
+  height: 10vw;
+  min-width: 7vw;
   background: url(../../assets/img/verso.jpg) center / cover no-repeat;
   margin: 10px;
 }
 
 #players {
-  position: absolute;
   display: flex;
   flex-direction: column;
-  top: 10vh;
   width: 100%;
 }
 
@@ -66,10 +58,6 @@
   margin-top: 25vh;
 }
 
-#players .card {
-  width: 30%;
-}
-
 body {
   background-color: rgb(0,133,98);
 }
@@ -80,49 +68,22 @@ body {
   padding-right: 3%;
 }
 
-#player-2 {
-}
-
 #player-5 {
   transform: rotate(30deg);
   padding-top: 7%;
   padding-left: 3%;
 }
 
-#player-second-row .card {
-  width: 12%;
-}
-
 #player-6 {
   transform: rotate(90deg);
-}
-
-#middle-container .card {
-  width: 17%;
 }
 
 #player-7 {
   transform: rotate(90deg);
 }
 
-.btn:not(:disabled):not(.disabled) {
-}
-
-#reveal-button {
-}
-
 #bank .cards-container {
   width: 70%;
-}
-
-div {
-}
-
-div {
-}
-
-#bank .cards-container .card {
-  width: 8%;
 }
 
 #reveal-text {

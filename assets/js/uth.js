@@ -407,6 +407,7 @@ class Game {
 
 
 window.addEventListener("resize", (event) => {
+  console.log('resize', event)
   if (window.innerWidth > 1200 || window.innerHeight <= window.innerWidth) {
     document.getElementById("change-to-landscape").close();
   }
