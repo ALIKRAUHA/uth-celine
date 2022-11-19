@@ -59,7 +59,7 @@ class Board {
 class Game {
   allCards = [];
   colors = ["coeur", "pique", "trefle", "carreau"];
-  constructor(revealButton, revealText) {
+  constructor(revealButton, revealText, zoom) {
     this.colors.forEach((color) => {
       for (let i = 1; i!= 14; i++) {
         this.allCards.push(new Card(color, i));
@@ -68,6 +68,7 @@ class Game {
     console.log(this.allCards);
     this.revealButton = revealButton;
     this.revealText = revealText;
+    this.zoom = zoom;
   }
 
   static random(min, max) {
@@ -99,7 +100,7 @@ class Game {
   reboot(numberOfPlayers) {
     var cardsNotSelected = [...this.allCards];
     this.board = new Board(cardsNotSelected, numberOfPlayers);
-    this.revealButton.textContent = "Révéler le board";
+    this.revealButton.textContent = "Révéler";
     this.revealText.textContent = "Cliquez sur révéler";
     console.log(this.board.players.length, numberOfPlayers)
     for (var i = this.board.players.length; i!== 8; i++) {
@@ -376,24 +377,42 @@ class Game {
   }
 
   next() {
+    zoom.finishZoom();
     if (this.step === 0) {
       this.beginDate = new Date().getTime();
-      this.revealButton.textContent = "Révéler la banque";
+      this.revealButton.textContent = "Révéler";
       this.revealText.textContent = "Cliquez sur révéler";
       this.board.cards.forEach((value, index) => {
         document.getElementById("board-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
       });
     } else if (this.step > 0 && this.step - 1 < this.board.players.length) {
-      this.revealButton.textContent = "Révéler la valeur et les prochaines cartes";
+      this.revealButton.textContent = "Révéler";
       var playerIndex = this.step-1;
       if (this.step > 1) {
         this.revealText.textContent = this.calculateValue(playerIndex - 1);
       }
+      const toZoom = [];
+      const board = document.getElementById("board-container").cloneNode(true);
+      const player = document.getElementById("player-" + playerIndex).cloneNode(true);
+      board.id = board.id + "copy";
+      player.id = player.id + "copy";
+      toZoom.push(board);
+      toZoom.push(player);
+      const idList = new Map();
+      Array.from(player.childNodes).forEach((element) => {
+        element.id = element.id + "copy"
+        idList.set(element.id, element);
+      })
       this.board.players[playerIndex].cards.forEach((value, index) => {
         document.getElementById("player-" + playerIndex + "-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
+        idList.get("player-" + playerIndex + "-card-" + (index+1)+"copy").style.backgroundImage = "url('" + value.image + "')";
       });
+      if (playerIndex = 0) {
+        toZoom.reverse();
+      } 
+      zoom.zoomOn(toZoom)
     } else if (this.step - 1 === this.board.players.length) {
-      this.revealButton.textContent = "Révéler la valeur et les prochaines cartes";
+      this.revealButton.textContent = "Révéler";
       this.revealText.textContent = this.calculateValue(this.step - 2);
       console.log('last');
       document.getElementById("time").textContent = ((new Date().getTime() - this.beginDate)/1000 ) + " s"
@@ -419,7 +438,35 @@ if (window.innerWidth < 1200 && window.innerHeight > window.innerWidth) {
 var revealButton = document.getElementById("reveal-button");
 var value = document.getElementById("reveal-text");
 
-game = new Game(revealButton, value);
+
+class ZoomOnElement {
+  constructor() {
+    this.middle = document.getElementById("middle");
+    this.middle.style.top = (window.innerHeight/2 - this.middle.offsetHeight/2) + "px";
+    this.middle.style.left = (window.innerWidth/2 - this.middle.offsetWidth/2) + "px";
+  }
+
+  zoomOn(childs) {
+    this.middle.style.display = "block";
+    childs.forEach((child) => {
+      this.middle.appendChild(child);
+    })
+    this.middle.style.transform= "scale(1.5)"
+    this.middle.style.backgroundColor = "rgb(0,133,98)";
+  }
+
+  finishZoom() {
+    console.log('finish zoom')
+    this.middle.innerHTML = "";
+    this.middle.style.display = "none";
+  }
+}
+
+
+
+
+const zoom = new ZoomOnElement();
+game = new Game(revealButton, value, zoom);
 //game.useAndTest(["Valet de pique", "3 de coeur", "Valet de trefle", "8 de trefle", "3 de pique", "3 de trefle", "Valet de coeur"], "testFull")
 
 game.reboot();
@@ -427,3 +474,4 @@ game.reboot();
 revealButton.addEventListener("click", (event) => {
   game.next();
 })
+

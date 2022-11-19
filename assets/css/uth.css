@@ -97,13 +97,14 @@ body {
   font-size: 1rem;
 }
 
-/* #middle {
+#middle {
   position: fixed;
-  top: 0px;
-  left: 0px;
-  height: 150px;
-  width: 200px;
-  border: 3px solid red;
-  transform: scale(5);
-} */
+  height: 50vh;
+  width: 50vw;
+  z-index: 1000;
+}
+
+#results {
+  z-index: 1001;
+}
 
