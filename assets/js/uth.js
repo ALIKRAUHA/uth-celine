@@ -407,7 +407,9 @@ class Game {
         document.getElementById("player-" + playerIndex + "-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
         idList.get("player-" + playerIndex + "-card-" + (index+1)+"copy").style.backgroundImage = "url('" + value.image + "')";
       });
-      if (playerIndex = 0) {
+      console.log(playerIndex, "playerIndex")
+      if (playerIndex !== 0) {
+        console.log('reverse')
         toZoom.reverse();
       } 
       zoom.zoomOn(toZoom)
@@ -421,7 +423,6 @@ class Game {
     }
     this.step += 1;
   }
-  
 }
 
 
