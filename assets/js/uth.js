@@ -97,6 +97,35 @@ class Game {
     }
   }
 
+  testWithName(testName, cards) {
+    let returnValue;
+    if(testName === "royalFlush") {
+      returnValue =  Game.testRoyalFlush(cards);
+    } else if (testName === "straightFlush") {
+      returnValue = Game.testStraightFlush(cards)
+    } else if (testName === "FourOfAKind") {
+      returnValue = Game.testFourOfAKind(cards);
+    } else if (testName === "full") {
+      returnValue =  Game.testFull(cards);
+    } else if (testName === "flush") {
+      returnValue = Game.testFlush(cards);
+    } else if (testName === "straight") {
+      returnValue = Game.testStraight(cards);
+    } else if (testName === "threeOfAKind") {
+      returnValue = Game.testThreeOfAKind(cards);
+    } else if (testName === "pair") {
+      const pairs = Game.testPair(cards);
+      if (pairs) {
+        if (pairs.length ===1) {
+          return "Paire de " + Card.convertIndex(pairs[0][0].index)
+        } else {
+          return "Double paire de " + Card.convertIndex(pairs[0][0].index) + " et "+ Card.convertIndex(pairs[1][0].index)
+        }
+      }
+    }
+    return returnValue ? returnValue[0]: false
+  }
+
   reboot(numberOfPlayers) {
     var cardsNotSelected = [...this.allCards];
     this.board = new Board(cardsNotSelected, numberOfPlayers);
@@ -163,7 +192,8 @@ class Game {
     }
   }
 
-  static testRoyalFlush(straight) {
+  static testRoyalFlush(cardsToTest) {
+    const straight =  Game.testStraight(cardsToTest);
     console.log('test Royal begin')
     if (straight && straight[1][straight[1].length - 1].index === 10 && (straight[1][0].index === 14 || straight[1][0].index === 1)) {
       const flush = Game.testFlush(straight);
@@ -179,7 +209,8 @@ class Game {
     }
   }
 
-  static testStraightFlush(straight) {
+  static testStraightFlush(cardsToTest) {
+    const straight =  Game.testStraight(cardsToTest);
     console.log('testStraightFlush begin')
     if (!straight) {
       console.log('testStraightFlush finish false')
@@ -320,60 +351,63 @@ class Game {
       return 0;
     });
 
-    const straight =  Game.testStraight(cardsToTest);
 
     //Royal flush
-    const royalFlush = Game.testRoyalFlush(straight);
+    const royalFlush = Game.testRoyalFlush(cardsToTest);
     if (royalFlush) {
-      return royalFlush[0]
+      return [royalFlush[0], 1]
     }
 
     //straight flush
-    const straightFlush = Game.testStraightFlush(straight)
+    const straightFlush = Game.testStraightFlush(cardsToTest)
     if (straightFlush) {
-      return straightFlush[0];
+      return [straightFlush[0], 2]
     }
     //carre
     const carre = Game.testFourOfAKind(cardsToTest);
     if (carre) {
-      return carre[0];
+      return [carre[0], 3];
     }
 
     //full
     const full = Game.testFull(cardsToTest);
     if (full) {
-      return full[0];
+      return [full[0], 4];
     }
 
     //flush
     const flush = Game.testFlush(cardsToTest);
     if (flush) {
-      return flush[0];
+      return [flush[0], 5];
     }
 
     //Straight
     const restraight = Game.testStraight(cardsToTest);
     if (restraight) {
-      return restraight[0];
+      return [restraight[0], 6];
     }
 
     //brelan
     const brelan = Game.testThreeOfAKind(cardsToTest);
     if (brelan) {
-      return brelan[0];
+      return [brelan[0], 7];
     }
 
     //pairs
     const pairs = Game.testPair(cardsToTest);
     if (pairs) {
       if (pairs.length ===1) {
-        return "Paire de " + Card.convertIndex(pairs[0][0].index)
+        return ["Paire de " + Card.convertIndex(pairs[0][0].index), 9];
       } else {
-        return "Double paire de " + Card.convertIndex(pairs[0][0].index) + " et "+ Card.convertIndex(pairs[1][0].index)
+        return ["Double paire de " + Card.convertIndex(pairs[0][0].index) + " et "+ Card.convertIndex(pairs[1][0].index), 8];
       }
     }
 
-    return "Carte haute";
+    return ["Carte haute", 10];
+  }
+
+  superiorToBank() {
+    
   }
 
   next() {
@@ -388,9 +422,11 @@ class Game {
     } else if (this.step > 0 && this.step - 1 < this.board.players.length) {
       this.revealButton.textContent = "Révéler";
       var playerIndex = this.step-1;
-      if (this.step > 1) {
-        this.revealText.textContent = this.calculateValue(playerIndex - 1);
+      const calc = this.calculateValue(playerIndex - 1);
+      if (this.step === 1) {
+        this.bankValue = calc[1];
       }
+      this.revealText.textContent = calc[0];
       const toZoom = [];
       const board = document.getElementById("board-container").cloneNode(true);
       const player = document.getElementById("player-" + playerIndex).cloneNode(true);
@@ -407,16 +443,13 @@ class Game {
         document.getElementById("player-" + playerIndex + "-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
         idList.get("player-" + playerIndex + "-card-" + (index+1)+"copy").style.backgroundImage = "url('" + value.image + "')";
       });
-      console.log(playerIndex, "playerIndex")
       if (playerIndex !== 0) {
-        console.log('reverse')
         toZoom.reverse();
       } 
       zoom.zoomOn(toZoom)
     } else if (this.step - 1 === this.board.players.length) {
       this.revealButton.textContent = "Révéler";
-      this.revealText.textContent = this.calculateValue(this.step - 2);
-      console.log('last');
+      this.revealText.textContent = this.calculateValue(this.step - 2)[1];
       document.getElementById("time").textContent = ((new Date().getTime() - this.beginDate)/1000 ) + " s"
     } else {
       document.location = document.location;
