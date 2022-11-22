@@ -53,7 +53,6 @@ class Board {
     this.banck = new Player(0, [Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected)]);
     this.players.unshift(this.banck);
   }
-
 }
 
 class Game {
@@ -69,6 +68,16 @@ class Game {
     this.revealButton = revealButton;
     this.revealText = revealText;
     this.zoom = zoom;
+    this.payButton = document.getElementById("pay");
+    this.payBonusButton = document.getElementById("pay-bonus");
+    this.getAllButton = document.getElementById('get-all');
+    this.initializeButtons();
+  }
+
+  initializeButtons() {
+    this.payButton.style.display = "none";
+    this.payBonusButton.style.display = "none";
+    this.getAllButton.style.display = "none";
   }
 
   static random(min, max) {
@@ -341,6 +350,7 @@ class Game {
 
   calculateValue(playerIndex) {
     var cardsToTest = [...this.board.cards];
+    console.log('player inder', playerIndex)
     cardsToTest = cardsToTest.concat(this.board.players[playerIndex].cards);
     cardsToTest.sort((a, b) => {
       if (a.index < b.index) {
@@ -412,21 +422,27 @@ class Game {
 
   next() {
     zoom.finishZoom();
-    if (this.step === 0) {
+    if (stepUsed === 0) {
       this.beginDate = new Date().getTime();
       this.revealButton.textContent = "Révéler";
       this.revealText.textContent = "Cliquez sur révéler";
       this.board.cards.forEach((value, index) => {
         document.getElementById("board-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
       });
-    } else if (this.step > 0 && this.step - 1 < this.board.players.length) {
+    } else if (stepUsed > 0 && stepUsed - 1 < this.board.players.length) {
       this.revealButton.textContent = "Révéler";
-      var playerIndex = this.step-1;
-      const calc = this.calculateValue(playerIndex - 1);
-      if (this.step === 1) {
-        this.bankValue = calc[1];
+      var playerIndex = stepUsed-1;
+      console.log('into1', stepUsed, playerIndex)
+      if (stepUsed > 1) {
+        const calc = this.calculateValue(playerIndex - 1);
+        //TODO
+        const superior = this.superiorToBank(calc, playerIndex)
+  
+        if (stepUsed === 1) {
+          this.bankValue = calc[1];
+        }
+        this.revealText.textContent = calc[0];
       }
-      this.revealText.textContent = calc[0];
       const toZoom = [];
       const board = document.getElementById("board-container").cloneNode(true);
       const player = document.getElementById("player-" + playerIndex).cloneNode(true);
@@ -447,15 +463,19 @@ class Game {
         toZoom.reverse();
       } 
       zoom.zoomOn(toZoom)
-    } else if (this.step - 1 === this.board.players.length) {
+    } else if (stepUsed - 1 === this.board.players.length) {
+      //TODO
+      const calc = this.calculateValue(stepUsed - 2);
+      const superior = this.superiorToBank(calc, playerIndex)
+      
       this.revealButton.textContent = "Révéler";
-      this.revealText.textContent = this.calculateValue(this.step - 2)[1];
+      this.revealText.textContent = calc[0];
       document.getElementById("time").textContent = ((new Date().getTime() - this.beginDate)/1000 ) + " s"
     } else {
       document.location = document.location;
     }
     this.step += 1;
-  }
+  } 
 }
 
 
