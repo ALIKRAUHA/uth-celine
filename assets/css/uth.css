@@ -8,6 +8,23 @@
   flex-direction: row;
 }
 
+.false-result {
+  color: red;
+  text-decoration: line-through;
+}
+
+#pay-button {
+  display: none;
+}
+
+.good-result {
+  color: blue;
+}
+
+.correct-result {
+  color: green;
+}
+
 .cards-container {
   display: flex;
   align-items: center;

@@ -10,6 +10,34 @@
 </head>
 
 <body>
+    <dialog id="pay-modal">
+        <form method="dialog">
+            <h1>Payer le joueur</h1><br/>
+            <span id="bonus"></span><br/>
+            <span id="miser"></span><br/>
+            <span id="blind-mise"></span><br/>
+            <span id="jouer"></span><br/>
+            <input type="checkbox" id="mise-et-jouer" name="pay">
+            <label for="pay">Payer mise et jouer</label><br/>
+            <div id="blind-pay"></div>
+            <div id="bonus-pay"></div>   
+            <button id="validation" type="button">Valider</button>
+        </form>
+    </dialog>    
+    <dialog id="vizualize-results">
+        <form method="dialog">
+            <h1>Résultats</h1><br/>
+            <span id="player-result"></span><br/>
+            <span id="bank-result"></span><br/>
+            <span id="reveal-text"></span><br/>
+            <span id="bonus-result">Bonus: </span><br/>
+            <span id="miser-result"></span><br/>
+            <span id="blind-mise-result"></span><br/>
+            <span id="jouer-result"></span><br/>
+            <p id="love-message"></p>
+            <button id="continue" type="button">Ok</button>
+        </form>
+    </dialog>
     <div id="middle"></div>
     <div id="players">
         <div id="player-first-row">
@@ -63,19 +91,11 @@
             <div id="player-0-card-2" class="card"></div>
         </div>
         <div id="results">
-            <button class="btn btn-primary" id="pay" type="button">Payer</button>
-            <button class="btn btn-primary" id="pay-bonus" type="button">Payer bonus</button>
-            <button class="btn btn-primary" id="get-all" type="button">Tout ramasser</button>
-            <h1 id="reveal-text">Heading</h1>
             <span id="time"></span>
+            <button class="btn btn-primary" id="pay-button" type="button">Passer au paiement</button><br/>
             <button class="btn btn-primary" id="reveal-button" type="button">Button</button>
         </div>
     </div>
-    <!-- <dialog id="change-to-landscape">
-        <form method="dialog">
-            <h1>Passer votre appareil en paysage pour utiliser l'application</h1>
-        </form>
-    </dialog> -->
     <script src="assets/js/jquery.min.js"></script>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/uth.js"></script>

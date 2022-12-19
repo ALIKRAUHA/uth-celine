@@ -37,6 +37,54 @@ class Player {
   constructor(fric, cards) {
     this.fric = fric;
     this.cards = cards;
+    this.mise = Game.random(1, 20) * 5;
+    this.bonus = Game.random(1, 20) * 5;
+    this.blind = this.mise;
+    this.play = Game.random(1, 4) * this.mise;
+  }
+}
+
+class Payment {
+  constructor(value, type, removeAll) {
+    this.value = value;
+    this.type = type;
+    this.removeAll = removeAll;
+  }
+
+  stringify() {
+    if (this.removeAll) {
+      return "Vous avez ramassé ";
+    } else {
+      return "Vous avez payé " + this.value;
+    }
+  }
+}
+
+class Payments {
+  values = [];
+  push(value) {
+    const find = this.values.findIndex((valueAlreadyExisting) => {
+      return valueAlreadyExisting.type === value.type;
+    })
+    if (find === -1) {
+      this.values.push(value);
+    } else {
+      this.values.splice(find, 1);
+      this.values.push(value);
+    }
+  }
+
+  getAllNotBonus() {
+    return this.values.filter((value) => {
+      return value.type === "bonus";
+    });
+
+  }
+
+  getBonus() {
+    return this.values.filter((value) => {
+      return value.type !== "bonus";
+    });
   }
 }
 
@@ -55,6 +103,72 @@ class Board {
   }
 }
 
+class PayOrGet {
+
+  createInputNodes() {
+    const br = document.createElement("br");
+    this.labelInputValue = document.createElement("label");
+    this.labelInputValue.for = this.id + "-payvalue";
+    this.labelInputValue.id = this.id+ "-payvalue";
+    this.labelInputValue.textContent = this.labelInputValueText;
+    this.divContainer.appendChild(br);
+    this.divContainer.appendChild(this.labelInputValue);    
+    this.inputNumber = document.createElement("input");
+    this.inputNumber.type = "number";
+    this.inputNumber.id = this.id + "-payvalue";
+    this.inputNumber.name = this.inputNumber.id;
+    this.divContainer.appendChild(br.cloneNode());
+    this.divContainer.appendChild(this.inputNumber);
+  }
+
+  addInputNodes() {
+    this.labelInputValue.style.display = "inline-block";
+    this.inputNumber.style.display = "block";
+  }
+
+  removeInputNodes() {
+    this.labelInputValue.style.display = "none";
+    this.inputNumber.style.display = "none";
+  }
+
+  getValue() {
+    if (this.checkbox.checked) {
+      return new Payment(0, this.type, true);
+    } else {
+      return new Payment(this.inputNumber.value, this.type, false);
+    }
+  }
+
+  constructor(id, labelCheckboxText, labelInputValueText, type) {
+    this.id = id;
+    this.type = type;
+    this.labelInputValueText = labelInputValueText;
+    this.divContainer = document.getElementById(id);
+    while (this.divContainer.firstChild) {
+      this.divContainer.removeChild(this.divContainer.firstChild);
+    }
+    this.checkbox = document.createElement("input");
+    this.checkbox.type = "checkbox";
+    this.checkbox.id = id + "-checkbox";
+    this.checkbox.name = this.checkbox.id;
+    this.divContainer.appendChild( this.checkbox);
+    const labelCheckbox = document.createElement("label");
+    labelCheckbox.for =  this.checkbox.id;
+    labelCheckbox.textContent = labelCheckboxText;
+    this.divContainer.appendChild(labelCheckbox);
+    this.createInputNodes();
+
+    
+    this.checkbox.addEventListener("change", (ev) => {
+      if (ev.target.checked) {
+        this.removeInputNodes();
+      } else {
+        this.addInputNodes();
+      }
+    })
+  }
+}
+
 class Game {
   allCards = [];
   colors = ["coeur", "pique", "trefle", "carreau"];
@@ -64,20 +178,23 @@ class Game {
         this.allCards.push(new Card(color, i));
       }
     });
-    console.log(this.allCards);
     this.revealButton = revealButton;
     this.revealText = revealText;
     this.zoom = zoom;
-    this.payButton = document.getElementById("pay");
-    this.payBonusButton = document.getElementById("pay-bonus");
-    this.getAllButton = document.getElementById('get-all');
-    this.initializeButtons();
-  }
-
-  initializeButtons() {
-    this.payButton.style.display = "none";
-    this.payBonusButton.style.display = "none";
-    this.getAllButton.style.display = "none";
+    this.payModal = document.getElementById("pay-modal");
+    this.blindMise = document.getElementById('blind-mise');
+    this.paymentsTurn = new Payments();
+    this.playerIndex = 0;
+    document.getElementById("pay-button").addEventListener("click", (ev)=> {
+      console.log('next from pay-button')
+      this.next();
+    })
+    document.getElementById("validation").addEventListener("click", (ev) => {
+      this.validatePay(this.playerIndex);
+    })
+    document.getElementById("continue").addEventListener("click", (ev) => {
+      this.next();
+    })
   }
 
   static random(min, max) {
@@ -100,7 +217,6 @@ class Game {
         cards.push(find);
       }
     })
-    console.log(testName, "into1", cards)
     if (testName === "testFull") {
       console.log("return value", Game.testFull(cards));
     }
@@ -140,7 +256,6 @@ class Game {
     this.board = new Board(cardsNotSelected, numberOfPlayers);
     this.revealButton.textContent = "Révéler";
     this.revealText.textContent = "Cliquez sur révéler";
-    console.log(this.board.players.length, numberOfPlayers)
     for (var i = this.board.players.length; i!== 8; i++) {
       for(var j = 1; j!== 3; j++) {
         document.getElementById("player-" + i + "-card-" + j).style.backgroundColor = "rgb(0,133,98)";
@@ -173,11 +288,9 @@ class Game {
         numbers++;
         cards.push(element);
       } 
-      else if (indexBegin - numbers + 1 === element.index) {        
-        console.log('into2')
+      else if (indexBegin - numbers + 1 === element.index) { 
         cards.push(element);
       } else {
-        console.log('into3')
         if (numbers >= 5 ) {
           finished = true;
         }
@@ -193,7 +306,6 @@ class Game {
       }
     });
     if (finished) {
-      console.log('into straight')
       var textToReturn = "Suite de " + Card.convertIndex(cards[0].index) + " à " + Card.convertIndex(cards[cards.length - 1].index);
       return [textToReturn, cards];
     } else {
@@ -203,35 +315,28 @@ class Game {
 
   static testRoyalFlush(cardsToTest) {
     const straight =  Game.testStraight(cardsToTest);
-    console.log('test Royal begin')
     if (straight && straight[1][straight[1].length - 1].index === 10 && (straight[1][0].index === 14 || straight[1][0].index === 1)) {
       const flush = Game.testFlush(straight);
       if (flush) {
         var textToReturn = "Quinte flush Royal en " + flush[flush.length - 1].color;
         return [textToReturn, flush];
       }
-      console.log('test Royal finish false')
       return false;
     } else {
-      console.log('test Royal finish false')
       return false;
     }
   }
 
   static testStraightFlush(cardsToTest) {
     const straight =  Game.testStraight(cardsToTest);
-    console.log('testStraightFlush begin')
     if (!straight) {
-      console.log('testStraightFlush finish false')
       return false;
     }
     var flush = Game.testFlush(straight);
-    console.log(flush, 'flush')
     if (flush) {
       var textToReturn = "Quinte flush en " + flush[flush.length - 1].color;
       return [textToReturn, flush];
     } 
-    console.log('testStraightFlush finish false')
     return false;
   }
 
@@ -292,7 +397,6 @@ class Game {
         return 0;
       }
     })
-    console.log(sorted, 'sorted')
     return sorted;
   }
 
@@ -350,7 +454,6 @@ class Game {
 
   calculateValue(playerIndex) {
     var cardsToTest = [...this.board.cards];
-    console.log('player inder', playerIndex)
     cardsToTest = cardsToTest.concat(this.board.players[playerIndex].cards);
     cardsToTest.sort((a, b) => {
       if (a.index < b.index) {
@@ -420,59 +523,217 @@ class Game {
     
   }
 
-  next() {
-    zoom.finishZoom();
-    if (stepUsed === 0) {
-      this.beginDate = new Date().getTime();
-      this.revealButton.textContent = "Révéler";
-      this.revealText.textContent = "Cliquez sur révéler";
-      this.board.cards.forEach((value, index) => {
-        document.getElementById("board-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
-      });
-    } else if (stepUsed > 0 && stepUsed - 1 < this.board.players.length) {
-      this.revealButton.textContent = "Révéler";
-      var playerIndex = stepUsed-1;
-      console.log('into1', stepUsed, playerIndex)
-      if (stepUsed > 1) {
-        const calc = this.calculateValue(playerIndex - 1);
-        //TODO
-        const superior = this.superiorToBank(calc, playerIndex)
-  
-        if (stepUsed === 1) {
-          this.bankValue = calc[1];
-        }
-        this.revealText.textContent = calc[0];
-      }
-      const toZoom = [];
-      const board = document.getElementById("board-container").cloneNode(true);
-      const player = document.getElementById("player-" + playerIndex).cloneNode(true);
-      board.id = board.id + "copy";
-      player.id = player.id + "copy";
-      toZoom.push(board);
-      toZoom.push(player);
-      const idList = new Map();
-      Array.from(player.childNodes).forEach((element) => {
-        element.id = element.id + "copy"
-        idList.set(element.id, element);
-      })
-      this.board.players[playerIndex].cards.forEach((value, index) => {
-        document.getElementById("player-" + playerIndex + "-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
-        idList.get("player-" + playerIndex + "-card-" + (index+1)+"copy").style.backgroundImage = "url('" + value.image + "')";
-      });
-      if (playerIndex !== 0) {
-        toZoom.reverse();
-      } 
-      zoom.zoomOn(toZoom)
-    } else if (stepUsed - 1 === this.board.players.length) {
-      //TODO
-      const calc = this.calculateValue(stepUsed - 2);
-      const superior = this.superiorToBank(calc, playerIndex)
-      
-      this.revealButton.textContent = "Révéler";
-      this.revealText.textContent = calc[0];
-      document.getElementById("time").textContent = ((new Date().getTime() - this.beginDate)/1000 ) + " s"
+  revealBoard() {
+    this.beginDate = new Date().getTime();
+    this.revealButton.textContent = "Révéler";
+    this.revealText.textContent = "Cliquez sur révéler";
+    this.board.cards.forEach((value, index) => {
+      document.getElementById("board-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
+    });
+  }
+
+  revealValuePlayer(playerIndexToReveal) {
+    const calc = this.calculateValue(playerIndexToReveal);
+    //TODO
+    const superior = this.superiorToBank(calc, playerIndexToReveal)
+
+    if (playerIndexToReveal === 0) {
+      this.bankValue = calc[1];
+    }
+    this.revealText.textContent = calc[0];
+  }
+
+  revealPlayer(playerIndex) {
+    this.revealButton.textContent = "Révéler";
+    const toZoom = [];
+    const board = document.getElementById("board-container").cloneNode(true);
+    const player = document.getElementById("player-" + playerIndex).cloneNode(true);
+    board.id = board.id + "copy";
+    player.id = player.id + "copy";
+    toZoom.push(board);
+    toZoom.push(player);
+    const idList = new Map();
+    Array.from(player.childNodes).forEach((element) => {
+      element.id = element.id + "copy"
+      idList.set(element.id, element);
+    })
+    this.board.players[playerIndex].cards.forEach((value, index) => {
+      document.getElementById("player-" + playerIndex + "-card-" + (index+1)).style.backgroundImage = "url('" + value.image + "')";
+      idList.get("player-" + playerIndex + "-card-" + (index+1)+"copy").style.backgroundImage = "url('" + value.image + "')";
+    });
+    if (playerIndex !== 0) {
+      toZoom.reverse();
+    } 
+    zoom.zoomOn(toZoom);
+    document.getElementById("reveal-button").style.display = "block";
+  }
+
+  addActionButtons(playerIndex) {
+    this.paymentModalInit = new PayOrGet("blind-pay", "Ramasser la blinde", "Valeur à payer pour la blinde", "blind")
+    this.paymentModalInitBonus= new PayOrGet("bonus-pay", "Ramasser le bonus", "Valeur à payer pour le bonus", "bonus")
+    document.getElementById('mise-et-jouer').checked = false;
+    document.getElementById("bonus").textContent = "Bonus : " + this.board.players[playerIndex].bonus;
+    document.getElementById("miser").textContent = "Miser : " + this.board.players[playerIndex].mise;
+    document.getElementById("jouer").textContent = "Jouer : " + this.board.players[playerIndex].play;
+    this.blindMise.textContent = "Blinde : " + this.board.players[playerIndex].blind;
+    this.pay(playerIndex)
+  }
+
+  finishVisualizePaymentResult() {
+    const bonusResult = document.getElementById("bonus-result");
+    while (bonusResult.firstChild) {
+      bonusResult.removeChild(bonusResult.firstChild);
+    }
+    console.log("after remove bonus result")
+    bonusResult.textContent = "Bonus: "
+    document.getElementById("vizualize-results").close();
+    this.zoom.finishZoom();
+    console.log('next from finishVisualizePaymentResult')
+    this.next();
+  }
+
+  validatePay(playerIndex) {
+    this.paymentsTurn.push(this.paymentModalInit.getValue());
+    this.paymentsTurn.push(this.paymentModalInitBonus.getValue());
+    if (document.getElementById("mise-et-jouer").checked) {
+      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].play, "jouer", false))
+      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", false))
     } else {
-      document.location = document.location;
+      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].play, "jouer", true))
+      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", true))
+    }
+    this.payModal.close();
+    this.verifyPayment(playerIndex);
+    document.getElementById("vizualize-results").showModal();
+  }
+
+  printGoodResult(id, value) {
+    const elementToModify = document.getElementById(id + "-result");
+    const spanResult = document.createElement("span");
+    spanResult.classList.add("correct-result");
+    spanResult.textContent = value;
+    elementToModify.appendChild(spanResult); 
+  }
+
+  printFalseResult(id, valuePass, trueResult, commentValue) {
+    const elementToModify = document.getElementById(id + "-result");
+    const spanFalse = document.createElement("span");
+    spanFalse.classList.add("false-result");
+    spanFalse.textContent = valuePass;
+    elementToModify.appendChild(spanFalse);
+
+    const spanResult = document.createElement("span");
+    spanResult.classList.add("good-result");
+    spanResult.textContent = trueResult;
+    elementToModify.appendChild(spanResult); 
+    if (commentValue) {
+      const comment = document.createElement("span");
+      comment.classList.add("comment-result");
+      comment.textContent = commentValue;
+      elementToModify.appendChild(comment);
+    }
+  }
+
+  verifyPayment(playerIndex) {
+    console.log('verify payment')
+    //regarder si bonus est correct
+    const calc = this.calculateValue(playerIndex);
+    document.getElementById("player-result").textContent = calc[0];
+    document.getElementById("bank-result").textContent = this.calculateValue(0)[0];
+    var bonus = this.paymentsTurn.getBonus()
+    if (calc[1] > 7) {
+      if (bonus && bonus.length > 0) {
+        if (!bonus[0].removeAll){
+          this.printFalseResult("bonus", bonus[0].stringify(), "Ramasser")
+        } else {
+          this.printGoodResult("bonus", bonus[0].stringify())
+        }
+      } else {
+        console.error('verifyPayment: ' +'Cette condition ne devrait pas arriver.')
+      }
+    } else if (calc[1] <= 7) {
+      if (calc[1] === 7) {
+        //Brelan
+        this.verifyBonus(bonus[0].value, 3*this.board.players[playerIndex].bonus);
+      } else if (calc[1] === 6) {
+        //suite
+        this.verifyBonus(bonus[0].value, 4*this.board.players[playerIndex].bonus);
+      } else if (calc[1] === 5) {
+        //couleur 
+        this.verifyBonus(bonus[0].value, 7* this.board.players[playerIndex].bonus)
+      } else if (calc[1] === 4) {
+        //full 
+        this.verifyBonus(bonus[0].value, 8*this.board.players[playerIndex].bonus)
+      } else if (calc[1] === 3) {
+        //carré
+        this.verifyBonus(bonus[0].value, 30*this.board.players[playerIndex].bonus)
+      } else if (calc[1] === 2) {
+        //quinte flush
+        this.verifyBonus(bonus[0].value, 40* this.board.players[playerIndex].bonus)
+      } else if (calc[1] === 1) {
+        //quinte flush royale
+        this.verifyBonus(bonus[0].value, 50* this.board.players[playerIndex].bonus)
+      }
+    }
+    console.log(calc[0], playerIndex, this.board.players[playerIndex].bonus)
+    //Regarder si mise et jouer est correct
+    //regarder si la blinde est correcte
+  }
+
+  verifyBonus(bonusPassed, correctBonus) {
+    this.verifyType("bonus", bonusPassed, correctBonus);
+  }
+
+  verifyType(type, valuePassed, correctValue) {
+    if (valuePassed === correctValue) {
+      this.printGoodResult(type, correctValue);
+    } else {
+      this.printFalseResult(type, valuePassed, correctValue);
+    }
+  }
+
+  finishPayment(playerIndex) {
+    
+  }
+
+  pay(playerIndex) {
+    this.payModal.showModal();
+  }
+
+  next() {
+    console.log('step', this.step, 'playerIndex', this.playerIndex);
+    if (this.step > 3) {
+      console.log('into1')
+      if (this.playerIndex < this.board.players.length -1) {
+        this.step = 1;
+        this.playerIndex++;
+        this.zoom.finishZoom();
+      } else {
+        window.location.reload();
+      }
+    }
+    if (this.step === 0) {
+      this.revealBoard();
+    } else if (this.step  === 1) {
+      this.revealPlayer(this.playerIndex);
+    } else if (this.step === 2) {
+      document.getElementById("pay-button").style.display="none";
+      if (this.playerIndex !==0) {
+        document.getElementById('reveal-text').style.display = "none";
+        document.getElementById("reveal-button").style.display = "none";
+        this.revealValuePlayer(this.playerIndex);
+        this.addActionButtons(this.playerIndex);
+      } else {
+        this.step = 4;
+        console.log('next from else this.playerIndex !==0')
+        this.next();
+        return null;
+      }  
+    } else if (this.step === 3) {
+      console.log("finish vizualise", this.step, this.playerIndex)
+      this.step++;
+      this.finishVisualizePaymentResult();
+      return null;
     }
     this.step += 1;
   } 
@@ -510,7 +771,6 @@ class ZoomOnElement {
   }
 
   finishZoom() {
-    console.log('finish zoom')
     this.middle.innerHTML = "";
     this.middle.style.display = "none";
   }
@@ -526,6 +786,7 @@ game = new Game(revealButton, value, zoom);
 game.reboot();
 
 revealButton.addEventListener("click", (event) => {
+  console.log('next from reveal button')
   game.next();
 })
 
