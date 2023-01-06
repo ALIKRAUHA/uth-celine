@@ -42,6 +42,25 @@ class Player {
     this.blind = this.mise;
     this.play = Game.random(1, 4) * this.mise;
   }
+
+  
+  sortWithAsAs14() {
+    this.cards = this.cards.sort((a,b) => {
+      if (a.index === 1) {
+        a.index = 14;
+      }
+      if (b.index === 1) {
+        b.index = 14;
+      }
+      if (a.index < b.index) {
+        return -1;
+      } else if (a.index > b.index) {
+        return 1;
+      } else {
+        return 0;
+      }
+    })    
+  }
 }
 
 class Payment {
@@ -76,14 +95,20 @@ class Payments {
 
   getAllNotBonus() {
     return this.values.filter((value) => {
-      return value.type === "bonus";
+      return value.type !== "bonus";
     });
 
   }
 
+  getType(type) {
+    return this.values.filter((value) => {
+      return value.type !== type;
+    });
+  }
+
   getBonus() {
     return this.values.filter((value) => {
-      return value.type !== "bonus";
+      return value.type === "bonus";
     });
   }
 }
@@ -100,6 +125,18 @@ class Board {
     this.cards = [Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected)]
     this.banck = new Player(0, [Game.selectRandomCard(cardsNotSelected), Game.selectRandomCard(cardsNotSelected)]);
     this.players.unshift(this.banck);
+  }
+
+  remakeGame(index) {
+    const asString = localStorage.getItem('saved');
+    console.log(asString)
+    const array = JSON.parse(asString);
+    console.log("before", JSON.parse(JSON.stringify(this.players)))
+    this.players = array[index].players;
+    
+    console.log("after", JSON.parse(JSON.stringify(this.players)))
+    this.cards = array[index].cards;
+    this.banck = array[index].banck;
   }
 }
 
@@ -195,6 +232,24 @@ class Game {
     document.getElementById("continue").addEventListener("click", (ev) => {
       this.next();
     })
+    document.getElementById("replay-last-game").addEventListener("click", (ev) => {
+      window.location = window.location + '?replay=0'
+    });
+    document.getElementById("save-game").addEventListener("click", (ev) => {
+      const arrayString = localStorage.getItem('saved');
+      var array = [];
+      console.log(arrayString)
+      if (arrayString) {
+        const arrayObject = JSON.parse(arrayString);
+        array = arrayObject;
+      }
+      array.unshift({
+        players: this.board.players,
+        cards: this.board.cards,
+        banck: this.banck
+      })
+      localStorage.setItem('saved', JSON.stringify(array));
+    })
   }
 
   static random(min, max) {
@@ -251,9 +306,13 @@ class Game {
     return returnValue ? returnValue[0]: false
   }
 
-  reboot(numberOfPlayers) {
+  reboot(numberOfPlayers, indexToPlay) {
     var cardsNotSelected = [...this.allCards];
     this.board = new Board(cardsNotSelected, numberOfPlayers);
+    if (indexToPlay !== undefined) {
+      this.board.remakeGame(indexToPlay);
+    }
+    console.log(this.board, 'board', indexToPlay)
     this.revealButton.textContent = "Révéler";
     this.revealText.textContent = "Cliquez sur révéler";
     for (var i = this.board.players.length; i!== 8; i++) {
@@ -468,51 +527,51 @@ class Game {
     //Royal flush
     const royalFlush = Game.testRoyalFlush(cardsToTest);
     if (royalFlush) {
-      return [royalFlush[0], 1]
+      return [royalFlush[0], 1, royalFlush]
     }
 
     //straight flush
     const straightFlush = Game.testStraightFlush(cardsToTest)
     if (straightFlush) {
-      return [straightFlush[0], 2]
+      return [straightFlush[0], 2, straightFlush]
     }
     //carre
     const carre = Game.testFourOfAKind(cardsToTest);
     if (carre) {
-      return [carre[0], 3];
+      return [carre[0], 3, carre];
     }
 
     //full
     const full = Game.testFull(cardsToTest);
     if (full) {
-      return [full[0], 4];
+      return [full[0], 4, full];
     }
 
     //flush
     const flush = Game.testFlush(cardsToTest);
     if (flush) {
-      return [flush[0], 5];
+      return [flush[0], 5, flush];
     }
 
     //Straight
     const restraight = Game.testStraight(cardsToTest);
     if (restraight) {
-      return [restraight[0], 6];
+      return [restraight[0], 6, restraight];
     }
 
     //brelan
     const brelan = Game.testThreeOfAKind(cardsToTest);
     if (brelan) {
-      return [brelan[0], 7];
+      return [brelan[0], 7, brelan];
     }
 
     //pairs
     const pairs = Game.testPair(cardsToTest);
     if (pairs) {
       if (pairs.length ===1) {
-        return ["Paire de " + Card.convertIndex(pairs[0][0].index), 9];
+        return ["Paire de " + Card.convertIndex(pairs[0][0].index), 9, pairs];
       } else {
-        return ["Double paire de " + Card.convertIndex(pairs[0][0].index) + " et "+ Card.convertIndex(pairs[1][0].index), 8];
+        return ["Double paire de " + Card.convertIndex(pairs[0][0].index) + " et "+ Card.convertIndex(pairs[1][0].index), 8, pairs];
       }
     }
 
@@ -596,10 +655,8 @@ class Game {
     this.paymentsTurn.push(this.paymentModalInit.getValue());
     this.paymentsTurn.push(this.paymentModalInitBonus.getValue());
     if (document.getElementById("mise-et-jouer").checked) {
-      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].play, "jouer", false))
       this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", false))
     } else {
-      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].play, "jouer", true))
       this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", true))
     }
     this.payModal.close();
@@ -634,9 +691,7 @@ class Game {
     }
   }
 
-  verifyPayment(playerIndex) {
-    console.log('verify payment')
-    //regarder si bonus est correct
+  verifyBonusPayment(playerIndex) {
     const calc = this.calculateValue(playerIndex);
     document.getElementById("player-result").textContent = calc[0];
     document.getElementById("bank-result").textContent = this.calculateValue(0)[0];
@@ -676,8 +731,227 @@ class Game {
       }
     }
     console.log(calc[0], playerIndex, this.board.players[playerIndex].bonus)
+  }
+
+  verifyMiseAndJouer(superiorToBank) {
+    var miser = this.paymentsTurn.getType("mise");
+    if (superiorToBank && miser) {
+      this.printGoodResult("miser", miser[0].stringify())
+    } else if (superiorToBank && !miser) {
+      this.printFalseResult("miser", miser[0].stringify(), "Vous auriez dû payer.")
+    } else if (!superiorToBank && miser) {
+      this.printFalseResult("miser", miser[0].stringify(), "Vous auriez dû ramasser.")
+    }  else if (!superiorToBank && !miser) {
+      this.printGoodResult("miser", miser[0].stringify())
+    }  
+  }
+
+  verifyBlindValue(blind, playerValue) {
+    let realToPay;
+    if (playerValue[1] === 1) {
+      realToPay = this.board.players[this.playerIndex].blind * 500;
+    } else if (playerValue[1] === 2) {
+      realToPay = this.board.players[this.playerIndex].blind * 50;
+    } else if (playerValue[1] === 3) {
+      realToPay = this.board.players[this.playerIndex].blind * 10;
+    } else if (playerValue[1] === 4) {
+      realToPay = this.board.players[this.playerIndex].blind * 3;
+    } else if (playerValue[1] === 5) {
+      realToPay = this.board.players[this.playerIndex].blind * 1.5;
+    } else if (playerValue[1] === 6) {
+      realToPay = this.board.players[this.playerIndex].blind * 1;
+    }
+    if (realToPay === blind) {
+      this.printGoodResult("blind", blind[0].stringify())
+    } else {
+      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû payer " + realToPay);
+    }
+  }
+
+  verifyBlind(playerValue, superiorToBank) {
+    var blind = this.paymentsTurn.getType("blind");
+    var payable = playerValue[1] >= 6 ?  true: false;
+    if (!superiorToBank && blind) {
+      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû ramasser.")
+    } else if (!superiorToBank && !blind) {
+      this.printGoodResult("blind", blind[0].stringify())
+    }  else if (superiorToBank && !payable && blind) {
+      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû ramasser.")
+    } else if (superiorToBank && !payable && !blind) { 
+      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû payer.")
+    } else {
+      this.verifyBlindValue(blind, playerValue);
+    }
+  }
+
+  verifyPayment(playerIndex) {
+    console.log('verify payment')
+    //regarder si bonus est correct
+    this.verifyBonusPayment(playerIndex);
+    
+    const bankValue = this.calculateValue(0);
+    const playerValue = this.calculateValue(playerIndex);
+    const superiorToBank = this.playerSuperiorToBank(playerValue, bankValue);
     //Regarder si mise et jouer est correct
+    this.verifyMiseAndJouer(superiorToBank)
     //regarder si la blinde est correcte
+    this.verifyBlind(playerValue, superiorToBank);
+  }
+
+  //Return +1 si playerValue > bankValue 
+  // -1 si bankValue < playerValue
+  // 0 si =
+  verifyPairIsSuperior(playerValue, bankValue) {
+    if (playerValue[2][0].index > bankValue[2][0].index) {
+      return 1;
+    } else if (playerValue[2][0].index < bankValue[2][0].index) {
+      return -1;
+    } else {
+      this.board.players[this.playerIndex].sortWithAsAs14();
+      this.board.players[0].sortWithAsAs14();
+      if (this.board.players[this.playerIndex].cards[0].index > this.board.players[0].cards[0].index) {
+        return 1;
+      } else if (this.board.players[this.playerIndex].cards[0].index < this.board.players[0].cards[0].index) {
+        return -1;
+      } else {
+        if (this.board.players[this.playerIndex].cards[1].index > this.board.players[0].cards[1].index) {
+          return 1;
+        } else if (this.board.players[this.playerIndex].cards[1].index < this.board.players[0].cards[1].index) {
+          return -1;
+        } else {
+          return 0;
+        }
+      }
+    }
+  }
+
+  testHighCard(bankCard, playerCard) {
+    if (bankCard.index > playerCard.index) {
+      return 1;
+    } else if (bankCard.index < playerCard.index) {
+      return -1;
+    } else {
+      return 0;
+    }
+  }
+
+  // Retourne 1 si > à banque
+  // -1 si < à banque 
+  // 0 si = à banque
+  verifyHighCard(playerValue, bankValue) {
+    this.board.players[this.playerIndex].sortWithAsAs14();
+    this.board.players[0].sortWithAsAs14();
+    let highCard = this.testHighCard(this.board.players[0].cards[0], this.board.players[this.playerIndex].cards[0]);
+    if (highCard ===0) {
+      highCard = this.testHighCard(this.board.players[0].cards[1], this.board.players[this.playerIndex].cards[1]);
+    }
+    return highCard;
+  }
+
+  // Retourne 1 si > à banque
+  // -1 si < à banque 
+  // 0 si = à banque
+  verifyBrelan(playerValue, bankValue) {
+    if (bankValue[2][0].index > playerValue[2][0].index) {
+      return 1;
+    } else if (bankValue[2][0].index < playerValue[2][0].index) {
+      return -1;
+    } else {
+      return this.verifyHighCard(playerValue, bankValue);
+    }
+  }
+
+  verifyStraight(playerValue, bankValue) {
+    if (bankValue[2][0] > playerValue[2][0]) {
+      return 1;
+    } else if (bankValue[2][0] < playerValue[2][0]) {
+      return -1;
+    } else {
+      return this.verifyHighCard(playerValue, bankValue);
+    }
+  }
+
+  verifyColor(playerValue, bankValue) {
+    const color = playerValue[2].cards[0].color;
+    this.board.players[this.playerIndex].sortWithAsAs14();
+    this.board.players[0].sortWithAsAs14();
+    const cardsOfColorForPlayer = this.board.players[this.playerIndex].cards.filter((card) => {
+      return card.color === color;
+    });
+    const cardsOfColorForBank = this.board.players[0].cards.filter((card) => {
+      return card.color === color;
+    });
+    if (cardsOfColorForBank.length > 0 && cardsOfColorForPlayer.length > 0) {
+      return this.testHighCard(cardsOfColorForBank[0], cardsOfColorForPlayer[0])
+    } else {
+      if (cardsOfColorForBank.length ===0) {
+        return 1;
+      }
+      return -1;
+    }
+  }
+
+  verifySuperior(playerValue, bankValue) {
+    if (playerValue[1] === 8 || playerValue[1] === 9) {
+      return this.verifyPairIsSuperior(playerValue, bankValue);
+    } else if (playerValue[1] === 10) {
+      return this.verifyHighCard(playerValue, bankValue);
+    } else if (playerValue[1] === 7) {
+      return this.verifyBrelan(playerValue, bankValue);
+    } else if (playerValue[1] === 6) {
+      return this.verifyStraight(playerValue, bankValue);
+    } else if (playerValue[1] === 5) {
+      return this.verifyColor(playerValue, bankValue);
+    } else if (playerValue[1] === 4) {
+      return this.verifyFull(playerValue, bankValue);
+    } else if (playerValue[1] === 3) {
+      console.error(playerValue, bankValue, this, "Un carré ne peut pas être à la fois à la banque et au joueur.")
+      return 0;
+    } else if (playerValue[1] === 2) {
+      return this.verifyQuinteFlush(playerValue, bankValue);
+    } else if (playerValue[1] === 1) {
+      console.error(playerValue, bankValue, this, "Une quinte flush royale ne peut pas être à la fois à la banque et au joueur.")      
+      return 0;
+    }
+  }
+
+  verifyQuinteFlush(playerValue, bankValue) {
+    if (playerValue[2][0].index > bankValue[2][0].index) {
+      return 1;
+    } else if (playerValue[2][0].index < bankValue[2][0].index) {
+      return -1;
+    } else {
+      console.error(playerValue, bankValue, this, "Deux quintes flush de couleurs différentes impossible.")
+    }
+  }
+
+  verifyFull(playerValue, bankValue) {
+    if (playerValue[2][1][0][0].index > bankValue[2][1][0][0].index) {
+      return 1;
+    } else if (playerValue[2][1][0][0].index < bankValue[2][1][0][0].index) {
+      return -1;
+    } else {
+      if (playerValue[2][1][1][0].index > bankValue[2][1][1][0].index) {
+        return 1;
+      } else if (playerValue[2][1][1][0].index < bankValue[2][1][1][0].index) {
+        return -1;
+      } else {
+        return this.verifyHighCard(playerValue, bankValue);
+      }
+    }
+  }
+
+  // Retourne 1 si > à banque
+  // -1 si < à banque 
+  // 0 si = à banque
+  playerSuperiorToBank(playerValue, bankValue) {
+    if (playerValue[1] < bankValue[1]) {
+      return 1;
+    } else if (playerValue[1] > bankValue[1]) {
+      return -1;
+    } else {
+      this.verifySuperior(playerValue, bankValue);
+    }
   }
 
   verifyBonus(bonusPassed, correctBonus) {
@@ -778,12 +1052,17 @@ class ZoomOnElement {
 
 
 
-
 const zoom = new ZoomOnElement();
 game = new Game(revealButton, value, zoom);
 //game.useAndTest(["Valet de pique", "3 de coeur", "Valet de trefle", "8 de trefle", "3 de pique", "3 de trefle", "Valet de coeur"], "testFull")
-
-game.reboot();
+if (!window.location.href.includes('replay')) {
+  console.log('into1')
+  game.reboot();
+} else {  console.log('into2')
+  const value = window.location.href.substring(window.location.href.indexOf('replay=') + 7)
+  console.log(value)
+  game.reboot(0, value);
+}
 
 revealButton.addEventListener("click", (event) => {
   console.log('next from reveal button')
