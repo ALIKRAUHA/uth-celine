@@ -5,7 +5,6 @@ class Card {
   constructor(color, index) {
     this.color = color;
     this.index = index;
-    //TODO this.image = ;
     this.name = Card.convertIndex(index) + "de " + this.color;
     this.image = "assets/img/cards/" + this.color + "/" + index + ".jpg";
   }
@@ -34,13 +33,25 @@ class Card {
 }
 
 class Player {
-  constructor(fric, cards) {
+  constructor(fric, cards, mise, bonus, play) {
     this.fric = fric;
     this.cards = cards;
-    this.mise = Game.random(1, 20) * 5;
-    this.bonus = Game.random(1, 20) * 5;
+    if (mise) {
+      this.mise = mise;
+    } else {
+      this.mise = Game.random(1, 20) * 5;
+    }
+    if (bonus) {
+      this.bonus = bonus;
+    } else {
+      this.bonus = Game.random(1, 20) * 5;
+    }
     this.blind = this.mise;
-    this.play = Game.random(1, 4) * this.mise;
+    if (play) {
+      this.play = play;
+    } else {
+      this.play = Game.random(1, 4) * this.mise;
+    }   
   }
 
   
@@ -52,9 +63,9 @@ class Player {
       if (b.index === 1) {
         b.index = 14;
       }
-      if (a.index < b.index) {
+      if (a.index > b.index) {
         return -1;
-      } else if (a.index > b.index) {
+      } else if (a.index < b.index) {
         return 1;
       } else {
         return 0;
@@ -74,7 +85,18 @@ class Payment {
     if (this.removeAll) {
       return "Vous avez ramassé ";
     } else {
+      if (this.value === 0) {
+        return "Vous n'avez rien fait";
+      }
       return "Vous avez payé " + this.value;
+    }
+  }
+
+  isNotGet() {
+    if (this.removeAll) {
+      return false;
+    } else {
+      return true;
     }
   }
 }
@@ -102,8 +124,8 @@ class Payments {
 
   getType(type) {
     return this.values.filter((value) => {
-      return value.type !== type;
-    });
+      return value.type === type;
+    })[0];
   }
 
   getBonus() {
@@ -132,9 +154,12 @@ class Board {
     console.log(asString)
     const array = JSON.parse(asString);
     console.log("before", JSON.parse(JSON.stringify(this.players)))
-    this.players = array[index].players;
-    
-    console.log("after", JSON.parse(JSON.stringify(this.players)))
+    const playersObjects = array[index].players;
+    const players = [];
+    playersObjects.forEach((player) => {
+      players.push(new Player(player.fric, player.cards, player.mise, player.bonus, player.play))
+    })
+    this.players = players;
     this.cards = array[index].cards;
     this.banck = array[index].banck;
   }
@@ -172,7 +197,12 @@ class PayOrGet {
     if (this.checkbox.checked) {
       return new Payment(0, this.type, true);
     } else {
-      return new Payment(this.inputNumber.value, this.type, false);
+      console.log(this.inputNumber.value, 'value')
+      if (this.inputNumber.value != '') {
+        return new Payment(this.inputNumber.value, this.type, false);
+      } else {
+        return new Payment(0, this.type, false);
+      }
     }
   }
 
@@ -593,8 +623,6 @@ class Game {
 
   revealValuePlayer(playerIndexToReveal) {
     const calc = this.calculateValue(playerIndexToReveal);
-    //TODO
-    const superior = this.superiorToBank(calc, playerIndexToReveal)
 
     if (playerIndexToReveal === 0) {
       this.bankValue = calc[1];
@@ -640,11 +668,21 @@ class Game {
 
   finishVisualizePaymentResult() {
     const bonusResult = document.getElementById("bonus-result");
+    const blindResult = document.getElementById('blind-result');
+    const miserResult = document.getElementById('miser-result')
     while (bonusResult.firstChild) {
       bonusResult.removeChild(bonusResult.firstChild);
     }
+    while (blindResult.firstChild) {
+      blindResult.removeChild(blindResult.firstChild);
+    }
+    while (miserResult.firstChild) {
+      miserResult.removeChild(miserResult.firstChild);
+    }
     console.log("after remove bonus result")
     bonusResult.textContent = "Bonus: "
+    blindResult.textContent = "Blinde: "
+    miserResult.textContent = "Miser: "
     document.getElementById("vizualize-results").close();
     this.zoom.finishZoom();
     console.log('next from finishVisualizePaymentResult')
@@ -655,11 +693,17 @@ class Game {
     this.paymentsTurn.push(this.paymentModalInit.getValue());
     this.paymentsTurn.push(this.paymentModalInitBonus.getValue());
     if (document.getElementById("mise-et-jouer").checked) {
-      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", false))
+      this.paymentsTurn.push(new Payment(0, "mise", false))
     } else {
-      this.paymentsTurn.push(new Payment(this.board.players[playerIndex].mise, "mise", true))
+      if (document.getElementById("ramasser-mise-et-jouer").checked) {
+        this.paymentsTurn.push(new Payment(this.board.players[this.playerIndex].mise, "mise", true))
+      }
+      else {
+        this.paymentsTurn.push(new Payment(0, "mise", false))
+      }
     }
     this.payModal.close();
+    console.log(this.paymentsTurn, 'payments')
     this.verifyPayment(playerIndex);
     document.getElementById("vizualize-results").showModal();
   }
@@ -735,15 +779,26 @@ class Game {
 
   verifyMiseAndJouer(superiorToBank) {
     var miser = this.paymentsTurn.getType("mise");
-    if (superiorToBank && miser) {
-      this.printGoodResult("miser", miser[0].stringify())
-    } else if (superiorToBank && !miser) {
-      this.printFalseResult("miser", miser[0].stringify(), "Vous auriez dû payer.")
-    } else if (!superiorToBank && miser) {
-      this.printFalseResult("miser", miser[0].stringify(), "Vous auriez dû ramasser.")
-    }  else if (!superiorToBank && !miser) {
-      this.printGoodResult("miser", miser[0].stringify())
-    }  
+    console.log('miser', miser, superiorToBank)
+    if (superiorToBank === 0) {
+      if (miser.removeAll === false && miser.value === 0) {
+        this.printGoodResult("miser", "Vous avez payer 0.")
+      } else {
+        this.printFalseResult("miser", miser.stringify(), "Vous auriez dû payer 0")
+      }
+    } else if (superiorToBank === -1) {
+      if (miser.isNotGet()) {
+        this.printFalseResult("miser", miser.stringify(), "Vous auriez dû ramasser.")
+      }  else {
+        this.printGoodResult("miser", miser.stringify())
+      }  
+    } else if (superiorToBank === 1) {
+      if (miser.isNotGet()) {
+        this.printGoodResult("miser", miser.stringify())
+      } else {
+        this.printFalseResult("miser", miser.stringify(), "Vous auriez dû payer.")
+      }
+    }
   }
 
   verifyBlindValue(blind, playerValue) {
@@ -762,26 +817,49 @@ class Game {
       realToPay = this.board.players[this.playerIndex].blind * 1;
     }
     if (realToPay === blind) {
-      this.printGoodResult("blind", blind[0].stringify())
+      this.printGoodResult("blind", blind.stringify())
     } else {
-      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû payer " + realToPay);
+      this.printFalseResult("blind", blind.stringify(), "Vous auriez dû payer " + realToPay);
     }
   }
 
   verifyBlind(playerValue, superiorToBank) {
-    var blind = this.paymentsTurn.getType("blind");
-    var payable = playerValue[1] >= 6 ?  true: false;
-    if (!superiorToBank && blind) {
-      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû ramasser.")
-    } else if (!superiorToBank && !blind) {
-      this.printGoodResult("blind", blind[0].stringify())
-    }  else if (superiorToBank && !payable && blind) {
-      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû ramasser.")
-    } else if (superiorToBank && !payable && !blind) { 
-      this.printFalseResult("blind", blind[0].stringify(), "Vous auriez dû payer.")
-    } else {
-      this.verifyBlindValue(blind, playerValue);
+    var blind = this.paymentsTurn.getType('blind');
+    var payable = playerValue[1] <= 6 ?  true: false;
+    console.log(superiorToBank, payable, blind)
+    if (superiorToBank === 0) {
+      if (!blind.removeAll && (blind.value === 0 || blind.value === '')) {
+        this.printGoodResult("blind", blind.stringify());
+      } else if (blind.removeAll) {
+        this.printFalseResult("blind", blind.stringify(), "Vous auriez dû ne rien faire.");
+      } else if (blind.value !==0 || blind.value !== '') {
+        this.printFalseResult("blind", blind.stringify(), "Vous auriez dû ne rien faire.");
+      }
+    } 
+    else {
+      if (superiorToBank === -1) {
+        if (blind.isNotGet()) {
+          this.printFalseResult("blind", blind.stringify(), "Vous auriez dû ramasser.")
+        } else {
+          this.printGoodResult("blind", blind.stringify())
+        }
+      } else if (superiorToBank === 1) {
+        if (payable) {
+          if (blind.isNotGet()) {
+            this.verifyBlindValue(blind, playerValue);
+          } else {
+            this.printFalseResult("blind", blind.stringify(), "Vous auriez dû payer")
+          }
+        } else if (!payable) {
+          if (blind.isNotGet()) {
+            this.printFalseResult("blind", blind.stringify(), "Vous auriez dû ramasser.")
+          } else {
+            this.printGoodResult("blind", blind.stringify())
+          }
+        }
+      }
     }
+    console.log(payable, "payable", blind)
   }
 
   verifyPayment(playerIndex) {
@@ -807,6 +885,7 @@ class Game {
     } else if (playerValue[2][0].index < bankValue[2][0].index) {
       return -1;
     } else {
+      console.log(this.board.players[this.playerIndex])
       this.board.players[this.playerIndex].sortWithAsAs14();
       this.board.players[0].sortWithAsAs14();
       if (this.board.players[this.playerIndex].cards[0].index > this.board.players[0].cards[0].index) {
@@ -845,6 +924,7 @@ class Game {
     if (highCard ===0) {
       highCard = this.testHighCard(this.board.players[0].cards[1], this.board.players[this.playerIndex].cards[1]);
     }
+    console.log(highCard, 'highcard returned',this.board.players[0], this.board.players[this.playerIndex], this.board.players[0].cards[1], this.board.players[this.playerIndex].cards[1])
     return highCard;
   }
 
@@ -950,7 +1030,7 @@ class Game {
     } else if (playerValue[1] > bankValue[1]) {
       return -1;
     } else {
-      this.verifySuperior(playerValue, bankValue);
+      return this.verifySuperior(playerValue, bankValue);
     }
   }
 
@@ -1056,9 +1136,8 @@ const zoom = new ZoomOnElement();
 game = new Game(revealButton, value, zoom);
 //game.useAndTest(["Valet de pique", "3 de coeur", "Valet de trefle", "8 de trefle", "3 de pique", "3 de trefle", "Valet de coeur"], "testFull")
 if (!window.location.href.includes('replay')) {
-  console.log('into1')
   game.reboot();
-} else {  console.log('into2')
+} else {
   const value = window.location.href.substring(window.location.href.indexOf('replay=') + 7)
   console.log(value)
   game.reboot(0, value);
